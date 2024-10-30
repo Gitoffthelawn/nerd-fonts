@@ -1545,7 +1545,11 @@ class font_patcher:
 
             # Handle glyph l/r/c alignment
             x_align_distance = 0
-            if self.args.nonmono and sym_dim['advance'] is None:
+            glyph_nonmono = self.args.nonmono
+            if currentSourceFontGlyph >= 0xe0a0 and currentSourceFontGlyph <= 0xe0df:
+                glyph_nonmono = False # Powerline glyphs are always 'mono'
+
+            if glyph_nonmono and sym_dim['advance'] is None:
                 # Remove left side bearing
                 # (i.e. do not remove left side bearing when combined BB is in use)
                 x_align_distance = -self.sourceFont[currentSourceFontGlyph].left_side_bearing
@@ -1589,7 +1593,7 @@ class font_patcher:
             # same width for all character glyphs. This needs to be done for all glyphs,
             # even the ones that are empty and didn't go through the scaling operations.
             # It should come after setting the glyph bearings
-            if not self.args.nonmono:
+            if not glyph_nonmono:
                 self.set_glyph_width_mono(self.sourceFont[currentSourceFontGlyph])
             else:
                 # Target font with variable advance width get the icons with their native widths
