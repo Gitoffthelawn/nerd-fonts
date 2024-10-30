@@ -6,7 +6,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 # Change the script version when you edit this script:
-script_version = "4.14.7"
+script_version = "4.14.8"
 
 version = "3.2.1"
 projectName = "Nerd Fonts"
@@ -1404,10 +1404,6 @@ class font_patcher:
             if sym_attr is None:
                 sym_attr = attributes['default']
 
-            if self.font_extrawide:
-                # Do not allow 'xy2' scaling
-                sym_attr['stretch'] = sym_attr['stretch'].replace('2', '')
-
             if exactEncoding:
                 # Use the exact same hex values for the source font as for the symbol font.
                 # Problem is we do not know the codepoint of the sym_glyph and because it
@@ -1431,6 +1427,15 @@ class font_patcher:
             # For debugging process only limited glyphs
             # if currentSourceFontGlyph != 0xe7bd:
             #     continue
+
+            powerline_glyph = currentSourceFontGlyph >= 0xe0a0 and currentSourceFontGlyph <= 0xe0df
+
+            if self.font_extrawide:
+                # Do not allow 'xy2' scaling
+                sym_attr['stretch'] = sym_attr['stretch'].replace('2', '')
+                if powerline_glyph and '1' not in sym_attr['stretch']:
+                    # Enforce 'pa1' scaling
+                    sym_attr['stretch'] += '1'
 
             ypadding = sym_attr['params'].get('ypadding')
             self.font_dim['ypadding'] = ypadding or 0.0
@@ -1459,6 +1464,8 @@ class font_patcher:
 
             stretch = sym_attr['stretch']
             dont_copy = sym_attr['params'].get('dont_copy')
+            # Powerline glyphs are always 'mono'-ish
+            glyph_nonmono = self.args.nonmono if not powerline_glyph else False
 
             if dont_copy:
                 # Just prepare scaling of existing glyphs
@@ -1545,10 +1552,6 @@ class font_patcher:
 
             # Handle glyph l/r/c alignment
             x_align_distance = 0
-            glyph_nonmono = self.args.nonmono
-            if currentSourceFontGlyph >= 0xe0a0 and currentSourceFontGlyph <= 0xe0df:
-                glyph_nonmono = False # Powerline glyphs are always 'mono'
-
             if glyph_nonmono and sym_dim['advance'] is None:
                 # Remove left side bearing
                 # (i.e. do not remove left side bearing when combined BB is in use)
@@ -1595,6 +1598,8 @@ class font_patcher:
             # It should come after setting the glyph bearings
             if not glyph_nonmono:
                 self.set_glyph_width_mono(self.sourceFont[currentSourceFontGlyph])
+                if self.args.nonmono: # Must be a powerlineglyph in proportional mode
+                    self.sourceFont[currentSourceFontGlyph].width *= self.get_target_width(stretch)
             else:
                 # Target font with variable advance width get the icons with their native widths
                 # and keeping possible (right and/or negative) bearings in effect
